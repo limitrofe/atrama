@@ -1,23 +1,48 @@
-node_modules
+# Imagens
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.tif
+*.webp
+*.svg
+*.ico
 
-# Output
-.output
-.vercel
-.netlify
-.wrangler
-/.svelte-kit
-/build
+# Vídeos
+*.mp4
+*.avi
+*.mkv
+*.mov
+*.wmv
+*.flv
+*.webm
+*.m4v
+*.3gp
+*.ogv
 
-# OS
-.DS_Store
-Thumbs.db
+# Áudios
+*.mp3
+*.wav
+*.flac
+*.aac
+*.ogg
+*.wma
+*.m4a
 
-# Env
+# Pastas de mídia
+/static/images/
+/static/videos/
+/static/media/
+/public/images/
+/public/videos/
+/public/media/
+/assets/images/
+/assets/videos/
+/assets/media/
+
+# Node modules e outros
+node_modules/
 .env
-.env.*
-!.env.example
-!.env.test
-
-# Vite
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
+.DS_Store
