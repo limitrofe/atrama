@@ -1,6 +1,8 @@
 <!-- StoryRenderer.svelte - COMPLETO com ScrollyFrames, CharacterPresentation, Curiosidades e RecommendedItems -->
 <script>
 	// Importação dos componentes da história
+		import Section from '../Section.svelte'; // ← NOVO: Componente Section
+
 	import Header from './story/Header.svelte';
 	import StoryText from './story/StoryText.svelte';
 	import SectionTitle from './story/SectionTitle.svelte';
@@ -32,120 +34,103 @@
 	 */
 	function getComponentType(paragraph) {
 		const type = paragraph.type?.toLowerCase();
-
+		
 		switch (type) {
-			// Headers e títulos
+			// NOVO: Section
+			case 'section':
+			case 'secao':
+			case 'container':
+				return 'section-container';
+
+
+			// Componentes existentes
 			case 'header':
 			case 'titulo-principal':
 				return 'header';
-
-			// Texto
 			case 'texto':
 			case 'paragrafo':
 				return 'text';
-
 			case 'intertitulo':
 			case 'titulo':
 				return 'section-title';
-
 			case 'frase':
 			case 'citacao':
 			case 'quote':
 				return 'quote';
-
-			// Mídia
 			case 'foto':
 			case 'imagem':
 				return 'photo';
-
 			case 'video':
 			case 'mp4':
 				return 'video';
-
 			case 'globovideo':
 			case 'globo-video':
 			case 'globoplayer':
 			case 'globo-player':
 			case 'globo':
 				return 'globo-player';
-
 			case 'galeria':
 			case 'gallery':
 				return 'gallery';
-
 			case 'carousel':
 			case 'carrossel':
 				return 'carousel';
-
-			// 🆕 NOVO: Itens Recomendados
-			case 'recomendados':
-			case 'recommended':
-			case 'recommended-items':
-			case 'itens-recomendados':
-			case 'relacionados':
-			case 'conteudos-relacionados':
-				return 'recommended-items';
-
-			// Componentes interativos
 			case 'parallax':
 				return 'parallax';
-
 			case 'beforeafter':
 			case 'before-after':
 			case 'antes-depois':
 				return 'before-after';
-
-			case 'scrolly':
 			case 'scrollytelling':
-				return 'scrolly';
-
-			// ✅ SCROLLY FRAMES
-			case 'scrollyframes':
-			case 'scrolly-frames':
+			case 'scrolly-telling':
+			case 'scrolly':
+				return 'scrolly-telling';
 			case 'videoscrollytelling':
 			case 'video-scrollytelling':
-			case 'videoscrolly':
-			case 'video-scrolly':
-				return 'scrollyframes';
-
-			// Visualizações
+			case 'scrollyframes':
+			case 'scrolly-frames':
+				return 'scrolly-frames';
 			case 'flourish':
+			case 'flourish-embed':
 				return 'flourish';
-
 			case 'flourish-scrolly':
 				return 'flourish-scrolly';
-
-			// 🎬 APRESENTAÇÕES
-			case 'personagens':
-			case 'characters':
+			case 'character':
+			case 'personagem':
 			case 'character-presentation':
-				return 'character-presentation';
-
+				return 'character';
 			case 'curiosidades':
-			case 'trivia':
-			case 'facts':
+			case 'curiosity':
 				return 'curiosidades';
-
-			// Navegação
+			case 'recommended':
+			case 'recomendados':
+			case 'recommended-items':
+				return 'recommended';
 			case 'anchor':
 			case 'ancora':
+			case 'anchor-point':
 				return 'anchor';
-
-			// Fallback
 			default:
 				return 'text';
 		}
 	}
 
-	/**
-	 * Extrai propriedades de um parágrafo para um componente
-	 */
-	function getComponentProps(paragraph) {
-		// Retorna todas as propriedades exceto 'type'
-		const { type, ...props } = paragraph;
-		return props;
+
+		function renderChild(child, index) {
+		const childType = getComponentType(child);
+		const props = getComponentProps(child);
+		
+		return { type: childType, props, data: child };
 	}
 
+	/**
+	 * Extrai as props específicas de cada tipo de componente.
+	 */
+	function getComponentProps(paragraph) {
+		const props = { ...paragraph };
+		delete props.type;
+		return props;
+	}
 	/**
 	 * Converte string para boolean
 	 */
@@ -238,12 +223,119 @@
 
 	<!-- Renderizar parágrafos -->
 	{#if storyData.paragraphs}
-		{#each storyData.paragraphs as paragraph}
+		{#each storyData.paragraphs as paragraph, index}
 			{@const componentType = getComponentType(paragraph)}
 			{@const props = getComponentProps(paragraph)}
 
+			<!-- NOVO: Section Container -->
+			{#if componentType === 'section-container'}
+				<Section
+					id={props.id || `section-${index}`}
+					backgroundColor={props.backgroundColor || props.background || ''}
+					backgroundImage={props.backgroundImage || ''}
+					backgroundVideo={props.backgroundVideo || ''}
+					backgroundSize={props.backgroundSize || 'cover'}
+					backgroundPosition={props.backgroundPosition || 'center'}
+					overlay={props.overlay || ''}
+					overlayOpacity={props.overlayOpacity || '0.5'}
+					padding={props.padding || ''}
+					paddingTop={props.paddingTop || ''}
+					paddingBottom={props.paddingBottom || ''}
+					paddingLeft={props.paddingLeft || ''}
+					paddingRight={props.paddingRight || ''}
+					margin={props.margin || ''}
+					marginTop={props.marginTop || ''}
+					marginBottom={props.marginBottom || ''}
+					marginLeft={props.marginLeft || ''}
+					marginRight={props.marginRight || ''}
+					textColor={props.textColor || props.color || ''}
+					textAlign={props.textAlign || props.align || ''}
+					fontSize={props.fontSize || ''}
+					fontWeight={props.fontWeight || ''}
+					minHeight={props.minHeight || 'auto'}
+					height={props.height || 'auto'}
+					maxWidth={props.maxWidth || ''}
+					width={props.width || ''}
+					display={props.display || ''}
+					justifyContent={props.justifyContent || ''}
+					alignItems={props.alignItems || ''}
+					flexDirection={props.flexDirection || ''}
+					className={props.className || ''}
+					as={props.as || 'section'}
+				>
+					<!-- Renderizar componentes filhos -->
+					{#if paragraph.children && paragraph.children.length > 0}
+						{#each paragraph.children as child, childIndex}
+							{@const childComponent = renderChild(child, childIndex)}
+							
+							<!-- Renderizar cada tipo de componente filho -->
+							{#if childComponent.type === 'text'}
+								<div class="section-child">
+									<StoryText 
+										content={childComponent.props.text} 
+										variant={childComponent.props.variant || 'body'} 
+										align={childComponent.props.align}
+										size={childComponent.props.size}
+										color={childComponent.props.color}
+									/>
+								</div>
+
+							{:else if childComponent.type === 'photo'}
+								<div class="section-child">
+									<PhotoWithCaption
+										src={childComponent.props.src}
+										alt={childComponent.props.alt}
+										caption={childComponent.props.caption}
+										credit={childComponent.props.credit}
+										fullWidth={stringToBoolean(childComponent.props.fullWidth, true)}
+									/>
+								</div>
+
+							{:else if childComponent.type === 'video'}
+								<div class="section-child">
+									<VideoPlayer
+										src={childComponent.props.src}
+										caption={childComponent.props.caption}
+										credit={childComponent.props.credit}
+										autoplay={stringToBoolean(childComponent.props.autoplay, false)}
+										controls={stringToBoolean(childComponent.props.controls, true)}
+										fullWidth={stringToBoolean(childComponent.props.fullWidth, true)}
+									/>
+								</div>
+
+							{:else if childComponent.type === 'header'}
+								<div class="section-child">
+									<Header
+										title={childComponent.props.title}
+										subtitle={childComponent.props.subtitle}
+										author={childComponent.props.author}
+										date={childComponent.props.date}
+										variant={childComponent.props.variant || 'simple'}
+									/>
+								</div>
+
+							{:else}
+								<!-- Fallback para outros tipos -->
+								<div class="section-child">
+									<StoryText content={childComponent.data.text || 'Componente não reconhecido'} variant="body" />
+								</div>
+							{/if}
+						{/each}
+					{:else}
+						<!-- Se não tem filhos, mostrar conteúdo direto -->
+						{#if props.content}
+							<div class="section-content">
+								{@html props.content}
+							</div>
+						{:else if props.text}
+							<div class="section-content">
+								<StoryText content={props.text} variant="body" />
+							</div>
+						{/if}
+					{/if}
+				</Section>
 			<!-- Header -->
-			{#if componentType === 'header'}
+{:else if componentType === 'header'}
 				<Header
 					title={props.title}
 					subtitle={props.subtitle}
@@ -256,7 +348,6 @@
 					variant={props.variant || 'default'}
 					overlay={stringToBoolean(props.overlay, true)}
 				/>
-
 			<!-- Text -->
 			{:else if componentType === 'text'}
 				<div class="section-content">
@@ -481,6 +572,10 @@
     authors={storyData.credits.authors || []}
   />
 {/if}
+
+{#if storyData.finalCredits}
+		<FinalCredits credits={storyData.finalCredits} />
+	{/if}
 </article>
 
 <style>
@@ -510,5 +605,18 @@
 		border-radius: 4px;
 		overflow-x: auto;
 		font-size: 0.875rem;
+	}
+	.section-child {
+		/* Estilos para componentes filhos dentro de section */
+		margin-bottom: 1rem;
+	}
+	
+	.section-child:last-child {
+		margin-bottom: 0;
+	}
+	
+	.section-content {
+		/* Estilos para conteúdo direto */
+		width: 100%;
 	}
 </style>

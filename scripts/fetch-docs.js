@@ -1,3 +1,4 @@
+// scripts/fetch-docs.js
 import axios from 'axios';
 import fs from 'fs/promises';
 import path from 'path';
@@ -127,7 +128,8 @@ async function fetchGoogleDoc(docId) {
         }
       });
     }
-       // 🎯 NOVO: Curiosidades - ADICIONAR após o bloco de Apresentação de Personagens
+
+    // 🎯 NOVO: Curiosidades
     const curiosidadesComponents = data.paragraphs?.filter(p => 
       ['curiosidades', 'trivia', 'facts', 'apresentacao-curiosidades'].includes(p.type?.toLowerCase())
     ) || [];
@@ -199,7 +201,7 @@ function parseHTMLFormat(html) {
   let allBlocks = [];
 
   // 1. Pega todo o conteúdo do body para análise
-  const bodyContentMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/s);
+  let bodyContentMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/s); // <<< const -> let
   if (!bodyContentMatch) {
     console.warn("⚠️ Tag <body> não encontrada. Analisando o HTML completo.");
     bodyContentMatch = [null, html];
@@ -261,78 +263,51 @@ function parseHTMLFormat(html) {
 }
 
 function parseIntroHTML(html) {
-    const intro = {};
-    const introTextMatch = html.match(/text:\s*([\s\S]*?)(?=\[intro\]|$)/);
-    if (introTextMatch) {
-      intro.text = cleanAndFormatHTML(introTextMatch[1]);
-    }
-    return intro;
+  const intro = {};
+  const introTextMatch = html.match(/text:\s*([\s\S]*?)(?=\[intro\]|$)/);
+  if (introTextMatch) {
+    intro.text = cleanAndFormatHTML(introTextMatch[1]);
+  }
+  return intro;
 }
 
 function decodeHTMLEntities(text) {
   if (!text) return '';
-  
-  // Mapa completo de entidades HTML incluindo aspas especiais e caracteres especiais
   const entities = { 
-    // Básicas
     '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&nbsp;': ' ',
-    
-    // Aspas e citações - PROBLEMA PRINCIPAL
     '&lsquo;': "'", '&rsquo;': "'", '&ldquo;': '"', '&rdquo;': '"',
     '&laquo;': '«', '&raquo;': '»', '&sbquo;': '‚', '&bdquo;': '„',
     '&#8216;': "'", '&#8217;': "'", '&#8218;': '‚', '&#8220;': '"', 
     '&#8221;': '"', '&#8222;': '„', '&#8249;': '‹', '&#8250;': '›',
-    
-    // Acentos portugueses
-    '&aacute;': 'á', '&agrave;': 'à', '&acirc;': 'â', '&atilde;': 'ã', '&auml;': 'ä', '&aring;': 'å',
+    '&aacute;': 'á', '&agrave;': 'à', '&acirc;': 'â', '&atilde;': 'ã', '&auml;': 'ä', '&aring': 'å',
     '&eacute;': 'é', '&egrave;': 'è', '&ecirc;': 'ê', '&euml;': 'ë',
     '&iacute;': 'í', '&igrave;': 'ì', '&icirc;': 'î', '&iuml;': 'ï',
     '&oacute;': 'ó', '&ograve;': 'ò', '&ocirc;': 'ô', '&otilde;': 'õ', '&ouml;': 'ö',
     '&uacute;': 'ú', '&ugrave;': 'ù', '&ucirc;': 'û', '&uuml;': 'ü',
     '&ccedil;': 'ç', '&ntilde;': 'ñ',
-    
-    // Maiúsculas acentuadas
     '&Aacute;': 'Á', '&Agrave;': 'À', '&Acirc;': 'Â', '&Atilde;': 'Ã', '&Auml;': 'Ä',
     '&Eacute;': 'É', '&Egrave;': 'È', '&Ecirc;': 'Ê', '&Euml;': 'Ë',
     '&Iacute;': 'Í', '&Igrave;': 'Ì', '&Icirc;': 'Î', '&Iuml;': 'Ï',
     '&Oacute;': 'Ó', '&Ograve;': 'Ò', '&Ocirc;': 'Ô', '&Otilde;': 'Õ', '&Ouml;': 'Ö',
     '&Uacute;': 'Ú', '&Ugrave;': 'Ù', '&Ucirc;': 'Û', '&Uuml;': 'Ü',
     '&Ccedil;': 'Ç', '&Ntilde;': 'Ñ',
-    
-    // Outros símbolos comuns
     '&mdash;': '—', '&ndash;': '–', '&hellip;': '…', '&middot;': '·',
     '&bull;': '•', '&dagger;': '†', '&Dagger;': '‡', '&permil;': '‰',
     '&prime;': '′', '&Prime;': '″', '&lsaquo;': '‹', '&rsaquo;': '›',
-    '&copy;': '©', '&reg;': '®', '&trade;': '™', '&deg;': '°'
+    '&copy;': '©', '&reg;': '®', '&trade': '™', '&deg;': '°'
   };
-  
-  // Primeiro, aplica o mapa de entidades conhecidas
   let decoded = text.replace(/&[a-zA-Z0-9#]+;/g, (entity) => entities[entity] || entity);
-  
-  // Em seguida, tenta decodificar entidades numéricas que possam ter sobrado
-  decoded = decoded.replace(/&#(\d+);/g, (match, num) => {
-    try {
-      return String.fromCharCode(parseInt(num, 10));
-    } catch (e) {
-      return match; // Se falhar, mantém o original
-    }
+  decoded = decoded.replace(/&#(\d+);/g, (m, num) => {
+    try { return String.fromCharCode(parseInt(num, 10)); } catch { return m; }
   });
-  
-  // Por último, tenta decodificar entidades hexadecimais
-  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => {
-    try {
-      return String.fromCharCode(parseInt(hex, 16));
-    } catch (e) {
-      return match; // Se falhar, mantém o original
-    }
+  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (m, hex) => {
+    try { return String.fromCharCode(parseInt(hex, 16)); } catch { return m; }
   });
-  
   return decoded;
 }
 
 function parseJSONField(jsonString, fieldName) {
   if (!jsonString) return null;
-  
   try {
     let cleanJson = jsonString
       .replace(/<[^>]*>/g, '') 
@@ -342,7 +317,6 @@ function parseJSONField(jsonString, fieldName) {
       .replace(/&gt;/g, '>')
       .replace(/&#39;/g, "'")
       .replace(/&nbsp;/g, ' ')
-      // 🔧 CORREÇÃO: Adicionar tratamento para aspas especiais
       .replace(/&lsquo;/g, "'")
       .replace(/&rsquo;/g, "'")
       .replace(/&ldquo;/g, '"')
@@ -354,21 +328,20 @@ function parseJSONField(jsonString, fieldName) {
       .replace(/\n/g, ' ')
       .replace(/\r/g, ' ')
       .replace(/\s+/g, ' ')
-.replace(/\.{2,}/g, '.')  // Remove pontos duplos
-.replace(/\.\s*\.\s*$/g, '.')  // Remove pontos duplos no final
-.replace(/\s+\.\s*$/g, '.')  // Remove espaços antes do ponto final
+      .replace(/\.{2,}/g, '.')
+      .replace(/\.\s*\.\s*$/g, '.')
+      .replace(/\s+\.\s*$/g, '.')
       .replace(/,\s*\]/g, ']')
       .replace(/,\s*}/g, '}')
       .replace(/["""„‟«»"‶‷"″‟‹›]/g, '"') 
-      .replace(/\[/g, '[')  // Preserva colchetes de abertura
-      .replace(/\]/g, ']')  // Preserva colchetes de fechamento
+      .replace(/\[/g, '[')
+      .replace(/\]/g, ']')
       .replace(/['''‚‛‹›]/g, "'") 
-      .replace(/\s*:\s*/g, ': ')  // Mantém espaço após dois pontos
-      .replace(/,(?!\s)/g, ', ')  // Adiciona espaço após vírgula se não houver
-      .replace(/https:\s+\/\//g, 'https://')  // Remove espaços em https: //
-.replace(/http:\s+\/\//g, 'http://')    // Remove espaços em http: //
-.replace(/:\s+\/\//g, '://')            // Remove espaços genéricos em protocolos
-
+      .replace(/\s*:\s*/g, ': ')
+      .replace(/,(?!\s)/g, ', ')
+      .replace(/https:\s+\/\//g, 'https://')
+      .replace(/http:\s+\/\//g, 'http://')
+      .replace(/:\s+\/\//g, '://')
       .trim();
     
     let parsed = JSON.parse(cleanJson);
@@ -415,6 +388,33 @@ function parseJSONField(jsonString, fieldName) {
 
 function parseParagraphsHTML(html) {
   const paragraphs = [];
+  let currentSection = null;
+  let sectionChildren = [];
+  
+  // Detectar blocos de section com sintaxe [+section]...[section]
+  const sectionBlockRegex = /\[\+section\]([\s\S]*?)\[section\]/gs;
+  const sectionBlocks = [...html.matchAll(sectionBlockRegex)];
+  
+  if (sectionBlocks.length > 0) {
+    console.log(`📦 ${sectionBlocks.length} section(s) com sintaxe de bloco detectada(s)`);
+    
+    let processedHtml = html;
+    
+    for (const [fullMatch, sectionContent] of sectionBlocks) {
+      const sectionData = parseSectionBlock(sectionContent);
+      paragraphs.push(sectionData);
+      processedHtml = processedHtml.replace(fullMatch, '');
+    }
+    
+    if (processedHtml.trim()) {
+      const remainingParagraphs = parseRegularParagraphs(processedHtml);
+      paragraphs.push(...remainingParagraphs);
+    }
+    
+    return paragraphs;
+  }
+  
+  // Sintaxe antiga - processar normalmente mas detectar sections inline
   const typeBlocks = html.split(/(?=type:\s*)/);
   
   for (const block of typeBlocks) {
@@ -426,299 +426,419 @@ function parseParagraphsHTML(html) {
     if (typeMatch) {
       paragraph.type = decodeHTMLEntities(typeMatch[1].trim());
     }
-
-    // 🎬 NOVO: TRATAMENTO ESPECÍFICO PARA APRESENTAÇÃO DE PERSONAGENS
-    if (['personagens', 'characters', 'character-presentation', 'apresentacao-personagens'].includes(paragraph.type?.toLowerCase())) {
-      console.log('🎭 Processando Apresentação de Personagens...');
-      
-      // Campos específicos de personagens
-      const characterFields = {
-        personagens: /personagens:\s*(\[[\s\S]*?\])/i,
-        characters: /characters:\s*(\[[\s\S]*?\])/i,
-        lista: /lista:\s*(\[[\s\S]*?\])/i,
-        shapeColor: /shapeColor:\s*([^\n<]+)/i,
-        nameColor: /nameColor:\s*([^\n<]+)/i,
-        textColor: /textColor:\s*([^\n<]+)/i,
-        backgroundColor: /backgroundColor:\s*([^\n<]+)/i,
-        animationSpeed: /animationSpeed:\s*([^\n<]+)/i,
-        sectionHeight: /sectionHeight:\s*([^\n<]+)/i,
-        sectionHeightMobile: /sectionHeightMobile:\s*([^\n<]+)/i
-      };
-
-      // Processar lista de personagens (JSON array)
-      for (const field of ['personagens', 'characters', 'lista']) {
-        const regex = characterFields[field];
-        const match = block.match(regex);
-        if (match) {
-          paragraph[field] = parseJSONField(match[1], `character ${field}`);
-          console.log(`   ✅ ${paragraph[field]?.length || 0} personagens processados em ${field}`);
-          break; // Usa apenas o primeiro campo encontrado
-        }
+    
+    if (['section', 'secao', 'container'].includes(paragraph.type?.toLowerCase())) {
+      if (currentSection) {
+        currentSection.children = sectionChildren;
+        paragraphs.push(currentSection);
+        sectionChildren = [];
       }
-
-      // Processar outros campos
-      for (const [field, regex] of Object.entries(characterFields)) {
-        if (['personagens', 'characters', 'lista'].includes(field)) continue; // Já processado acima
-        
-        const match = block.match(regex);
-        if (match) {
-          paragraph[field] = decodeHTMLEntities(match[1].trim());
-        }
-      }
-
-      // 🔧 CORREÇÃO: Processar campo 'text' para apresentação de personagens também
-      const textMatch = block.match(/text:\s*(.*?)(?=\s*(?:personagens|characters|lista|shapeColor|nameColor|textColor|backgroundColor|animationSpeed|sectionHeight|sectionHeightMobile):|type:|$)/si);
-      if (textMatch) {
-        paragraph.text = cleanAndFormatHTML(textMatch[1].trim());
-      }
-
-      paragraphs.push(paragraph);
+      currentSection = processSectionInline(block);
       continue;
-    }
-
-    // 🎯 NOVO: TRATAMENTO ESPECÍFICO PARA CURIOSIDADES - ADICIONAR após personagens
-    if (['curiosidades', 'trivia', 'facts', 'apresentacao-curiosidades'].includes(paragraph.type?.toLowerCase())) {
-      console.log('🎯 Processando Curiosidades...');
-      
-      // Campos específicos de curiosidades
-      const curiosidadesFields = {
-        personagens: /personagens:\s*(\[[\s\S]*?\])/i,
-        characters: /characters:\s*(\[[\s\S]*?\])/i,
-        lista: /lista:\s*(\[[\s\S]*?\])/i,
-        shapeColor: /shapeColor:\s*([^\n<]+)/i,
-        nameColor: /nameColor:\s*([^\n<]+)/i,
-        textColor: /textColor:\s*([^\n<]+)/i,
-        backgroundColor: /backgroundColor:\s*([^\n<]+)/i,
-        quoteColor: /quoteColor:\s*([^\n<]+)/i  // ✅ NOVO CAMPO
-      };
-
-      // Processar lista de curiosidades (JSON array)
-      for (const field of ['personagens', 'characters', 'lista']) {
-        const regex = curiosidadesFields[field];
-        const match = block.match(regex);
-        if (match) {
-          paragraph[field] = parseJSONField(match[1], `curiosidades ${field}`);
-          console.log(`   ✅ ${paragraph[field]?.length || 0} curiosidades processadas em ${field}`);
-          break; // Usa apenas o primeiro campo encontrado
-        }
-      }
-
-      // Processar outros campos de curiosidades
-      for (const [field, regex] of Object.entries(curiosidadesFields)) {
-        if (['personagens', 'characters', 'lista'].includes(field)) continue; // Já processado acima
-        
-        const match = block.match(regex);
-        if (match) {
-          paragraph[field] = decodeHTMLEntities(match[1].trim());
-        }
-      }
-
-      // Processar campo 'text' para curiosidades
-      const textMatch = block.match(/text:\s*(.*?)(?=\s*(?:personagens|characters|lista|shapeColor|nameColor|textColor|backgroundColor|quoteColor):|type:|$)/si);
-      if (textMatch) {
-        paragraph.text = cleanAndFormatHTML(textMatch[1].trim());
-      }
-
-      paragraphs.push(paragraph);
-      continue;
-    }
-
-    // 🆕 NOVO: TRATAMENTO ESPECÍFICO PARA ITENS RECOMENDADOS
-    if (['recomendados', 'recommended', 'recommended-items', 'itens-recomendados', 'relacionados', 'conteudos-relacionados'].includes(paragraph.type?.toLowerCase())) {
-      console.log('🎯 Processando Itens Recomendados...');
-      
-      // Campos específicos de itens recomendados
-      const recommendedFields = {
-        items: /items:\s*(\[[\s\S]*?\])/i,
-        itens: /itens:\s*(\[[\s\S]*?\])/i,
-        title: /title:\s*([^\n<]+)/i,
-        titulo: /titulo:\s*([^\n<]+)/i,
-        layout: /layout:\s*([^\n<]+)/i,
-        columns: /columns:\s*([^\n<]+)/i,
-        colunas: /colunas:\s*([^\n<]+)/i,
-        showTitle: /showTitle:\s*([^\n<]+)/i,
-        mostrarTitulo: /mostrarTitulo:\s*([^\n<]+)/i,
-        backgroundColor: /backgroundColor:\s*([^\n<]+)/i,
-        corFundo: /corFundo:\s*([^\n<]+)/i,
-        titleColor: /titleColor:\s*([^\n<]+)/i,
-        corTitulo: /corTitulo:\s*([^\n<]+)/i,
-        textColor: /textColor:\s*([^\n<]+)/i,
-        corTexto: /corTexto:\s*([^\n<]+)/i
-      };
-
-      // Processar lista de itens (JSON array)
-      for (const field of ['items', 'itens']) {
-        const regex = recommendedFields[field];
-        const match = block.match(regex);
-        if (match) {
-          paragraph[field] = parseJSONField(match[1], `recommended ${field}`);
-          console.log(`   ✅ ${paragraph[field]?.length || 0} itens processados em ${field}`);
-          break; // Usa apenas o primeiro campo encontrado
-        }
-      }
-
-      // Processar outros campos de itens recomendados
-      for (const [field, regex] of Object.entries(recommendedFields)) {
-        if (['items', 'itens'].includes(field)) continue; // Já processado acima
-        
-        const match = block.match(regex);
-        if (match) {
-          paragraph[field] = decodeHTMLEntities(match[1].trim());
-        }
-      }
-
-      // Processar campo 'text' para itens recomendados
-      const textMatch = block.match(/text:\s*(.*?)(?=\s*(?:items|itens|title|titulo|layout|columns|colunas|showTitle|mostrarTitulo|backgroundColor|corFundo|titleColor|corTitulo|textColor|corTexto):|type:|$)/si);
-      if (textMatch) {
-        paragraph.text = cleanAndFormatHTML(textMatch[1].trim());
-      }
-
-      paragraphs.push(paragraph);
-      continue;
-    }
-
-    // 🆕 TRATAMENTO ESPECÍFICO PARA SCROLLYFRAMES
-    if (paragraph.type?.toLowerCase() === 'scrollyframes') {
-      console.log('🎬 Processando ScrollyFrames...');
-      
-      // Campos específicos do ScrollyFrames
-      const scrollyFramesFields = {
-        frameStart: /frameStart:\s*([^\n<]+)/i,
-        frameStop: /frameStop:\s*([^\n<]+)/i,
-        imagePrefix: /imagePrefix:\s*([^\n<]+)/i,
-        imageSuffix: /imageSuffix:\s*([^\n<]+)/i,
-        imagePrefixMobile: /imagePrefixMobile:\s*([^\n<]+)/i,
-        imageSuffixMobile: /imageSuffixMobile:\s*([^\n<]+)/i,
-        height: /height:\s*([^\n<]+)/i,
-        showProgress: /showProgress:\s*([^\n<]+)/i,
-        showTime: /showTime:\s*([^\n<]+)/i,
-        preloadFrames: /preloadFrames:\s*([^\n<]+)/i,
-        memoryLimit: /memoryLimit:\s*([^\n<]+)/i,
-        animationSpeed: /animationSpeed:\s*([^\n<]+)/i,
-        smoothing: /smoothing:\s*([^\n<]+)/i,
-        debug: /debug:\s*([^\n<]+)/i,
-        fullWidth: /fullWidth:\s*([^\n<]+)/i
-      };
-
-      // Processar campos específicos
-      for (const [field, regex] of Object.entries(scrollyFramesFields)) {
-        const match = block.match(regex);
-        if (match) {
-          let value = decodeHTMLEntities(match[1].trim());
-          
-          // Converter tipos apropriados
-          if (['frameStart', 'frameStop', 'preloadFrames', 'memoryLimit'].includes(field)) {
-            paragraph[field] = parseInt(value) || (field === 'frameStart' ? 1 : field === 'preloadFrames' ? 8 : field === 'memoryLimit' ? 30 : 100);
-          } else if (field === 'animationSpeed') {
-            paragraph[field] = parseFloat(value) || 0.1;
-          } else if (['showProgress', 'showTime', 'smoothing', 'fullWidth'].includes(field)) {
-            paragraph[field] = value.toLowerCase() !== 'false';
-          } else if (field === 'debug') {
-            paragraph[field] = value.toLowerCase() === 'true';
-          } else {
-            paragraph[field] = value;
-          }
-        }
-      }
-
-      // Processar steps específicos para ScrollyFrames
-      const stepsMatch = block.match(/steps:\s*(\[[\s\S]*?\])/i);
-      if (stepsMatch) {
-        paragraph.steps = parseJSONField(stepsMatch[1], 'scrollyframes steps');
-        console.log(`   ✅ ${paragraph.steps?.length || 0} steps processados`);
-      }
-
-      // Processar texto se existir
-      const textMatch = block.match(/text:\s*(.*?)(?=\s*(?:frameStart|frameStop|imagePrefix|imageSuffix|imagePrefixMobile|imageSuffixMobile|height|showProgress|showTime|preloadFrames|memoryLimit|animationSpeed|smoothing|debug|fullWidth|steps):|type:|$)/si);
-      if (textMatch) {
-        paragraph.text = cleanAndFormatHTML(textMatch[1].trim());
-      }
-
-      paragraphs.push(paragraph);
-      continue;
-    }
-
-    // Flourish e outros componentes especiais
-    if (['flourish', 'flourish-scrolly', 'grafico', 'mapa'].includes(paragraph.type)) {
-      const srcMatch = block.match(/src:\s*([^\n<]+)/);
-      if (srcMatch) {
-        paragraph.src = srcMatch[1].trim();
-      }
-
-      const stepsMatch = block.match(/steps:\s*(\[[\s\S]*?\])/);
-      if (stepsMatch) {
-        paragraph.steps = parseJSONField(stepsMatch[1], 'flourish steps');
-      }
-      
-      paragraphs.push(paragraph);
-      continue;
-    }
-
-    // Processamento de texto para outros tipos
-    const textMatch = block.match(/text:\s*(.*?)(?=\s*(?:backgroundImage|backgroundImageMobile|backgroundVideo|backgroundVideoMobile|backgroundPosition|backgroundPositionMobile|author|role|src|videoSrc|videoSrcMobile|caption|credit|alt|fullWidth|variant|size|orientation|autoplay|controls|poster|images|items|steps|beforeImage|afterImage|beforeLabel|afterLabel|image|height|heightMobile|speed|content|overlay|layout|columns|interval|showDots|showArrows|stickyHeight|videoId|videosIDs|id|skipDFP|skipdfp|autoPlay|startMuted|maxQuality|quality|chromeless|isLive|live|allowRestrictedContent|preventBlackBars|globoId|token|adAccountId|adCmsId|siteName|width|textPosition|textPositionMobile|textAlign|textAlignMobile|title|subtitle|date|theme|videoAspectRatio|showProgress|showTime|showControls):|type:|$)/si);
-    if (textMatch) {
-  if (['texto', 'frase', 'intro'].includes(paragraph.type)) {
-  // 🔧 LIMPEZA ESPECÍFICA PARA ÚLTIMO PARÁGRAFO
-  let rawText = textMatch[1].trim();
-  rawText = rawText.replace(/\.\s*\.\s*$/, '.'); // Remove ponto duplo no final
-  rawText = rawText.replace(/\s+\.\s*$/, '.'); // Remove espaços antes do ponto final
-  paragraph.text = cleanAndFormatHTML(rawText);
-} else {
-  // 🔧 LIMPEZA ESPECÍFICA PARA ÚLTIMO PARÁGRAFO
-  let rawText = textMatch[1].trim();
-  rawText = rawText.replace(/\.\s*\.\s*$/, '.'); // Remove ponto duplo no final
-  rawText = rawText.replace(/\s+\.\s*$/, '.'); // Remove espaços antes do ponto final
-  paragraph.text = cleanAndFormatHTML(rawText);
-}
-
     }
     
-    // Processar arrays JSON
-    const jsonFields = ['images', 'items', 'steps'];
-    for (const field of jsonFields) {
-      const regex = new RegExp(`${field}:\\s*(\\[[\\s\\S]*?\\])`, 'i');
-      const match = block.match(regex);
-      if (match) {
-        paragraph[field] = parseJSONField(match[1], field);
+    if (['section-end', 'secao-end', '/section', 'end-section'].includes(paragraph.type?.toLowerCase())) {
+      if (currentSection) {
+        currentSection.children = sectionChildren;
+        paragraphs.push(currentSection);
+        currentSection = null;
+        sectionChildren = [];
       }
-    }
-
-    // Campos gerais (mantém sua lógica original)
-    const fieldMappings = {
-      title: 'title', subtitle: 'subtitle', date: 'date', theme: 'theme',
-      backgroundImage: 'backgroundImage', backgroundImageMobile: 'backgroundImageMobile', backgroundVideo: 'backgroundVideo',
-      backgroundVideoMobile: 'backgroundVideoMobile', backgroundPosition: 'backgroundPosition', backgroundPositionMobile: 'backgroundPositionMobile',
-      textPosition: 'textPosition', textPositionMobile: 'textPositionMobile', textAlign: 'textAlign', textAlignMobile: 'textAlignMobile',
-      author: 'author', role: 'role', src: 'src', videoSrc: 'videoSrc', videoSrcMobile: 'videoSrcMobile', srcMobile: 'srcMobile', caption: 'caption', credit: 'credit', alt: 'alt', fullWidth: 'fullWidth', variant: 'variant',
-      size: 'size', orientation: 'orientation', autoplay: 'autoplay', controls: 'controls', poster: 'poster', overlay: 'overlay',
-      layout: 'layout', columns: 'columns', interval: 'interval', showDots: 'showDots', showArrows: 'showArrows',
-      stickyHeight: 'stickyHeight', beforeImage: 'beforeImage', afterImage: 'afterImage', beforeLabel: 'beforeLabel',
-      afterLabel: 'afterLabel', image: 'image', speed: 'speed', content: 'content', videoId: 'videoId', videosIDs: 'videosIDs', id: 'id',
-      skipDFP: 'skipDFP', skipdfp: 'skipdfp', autoPlay: 'autoPlay', startMuted: 'startMuted', maxQuality: 'maxQuality', quality: 'quality',
-      chromeless: 'chromeless', isLive: 'isLive', live: 'live', allowRestrictedContent: 'allowRestrictedContent',
-      preventBlackBars: 'preventBlackBars', globoId: 'globoId', token: 'token', adAccountId: 'adAccountId', adCmsId: 'adCmsId',
-      siteName: 'siteName', width: 'width', height: 'height', heightMobile: 'heightMobile', showCaption: 'showCaption',
-      alignment: 'alignment', loop: 'loop', videoAspectRatio: 'videoAspectRatio', aspectRatio: 'aspectRatio', showProgress: 'showProgress', showTime: 'showTime', showControls: 'showControls'
-    };
-    
-    for (const [field, prop] of Object.entries(fieldMappings)) {
-      const regex = new RegExp(`\\b${field}:\\s*([^\\n<]*)`, 'i');
-      const match = block.match(regex);
-      if (match) {
-        const cleanedValue = (match[1] || '')
-            .replace(/&nbsp;/g, ' ')
-            .replace(/<[^>]*>/g, '')
-            .trim();
-            
-        paragraph[prop] = decodeHTMLEntities(cleanedValue);
-      }
+      continue;
     }
     
-    if (paragraph.type) {
-      paragraphs.push(paragraph);
+    const processedParagraph = processRegularComponent(block);
+    if (processedParagraph.type) {
+      if (currentSection) {
+        sectionChildren.push(processedParagraph);
+      } else {
+        paragraphs.push(processedParagraph);
+      }
     }
   }
+  
+  if (currentSection) {
+    currentSection.children = sectionChildren;
+    paragraphs.push(currentSection);
+  }
+  
   return paragraphs;
+}
+
+function parseSectionBlock(sectionContent) {
+  console.log('📦 Processando section com bloco...');
+  
+  const section = {
+    type: 'section',
+    children: []
+  };
+  
+  const lines = sectionContent.split('\n');
+  let sectionProps = '';
+  let childrenContent = '';
+  let foundFirstType = false;
+  
+  for (const line of lines) {
+    if (line.trim().startsWith('type:') && !foundFirstType) {
+      foundFirstType = true;
+      childrenContent += line + '\n';
+    } else if (foundFirstType) {
+      childrenContent += line + '\n';
+    } else {
+      sectionProps += line + '\n';
+    }
+  }
+  
+  const sectionFields = {
+    backgroundColor: /backgroundColor:\s*([^\n<]+)/i,
+    background: /background:\s*([^\n<]+)/i,
+    backgroundImage: /backgroundImage:\s*([^\n<]+)/i,
+    backgroundVideo: /backgroundVideo:\s*([^\n<]+)/i,
+    overlay: /overlay:\s*([^\n<]+)/i,
+    overlayOpacity: /overlayOpacity:\s*([^\n<]+)/i,
+    padding: /padding:\s*([^\n<]+)/i,
+    margin: /margin:\s*([^\n<]+)/i,
+    textColor: /textColor:\s*([^\n<]+)/i,
+    color: /color:\s*([^\n<]+)/i,
+    textAlign: /textAlign:\s*([^\n<]+)/i,
+    align: /align:\s*([^\n<]+)/i,
+    minHeight: /minHeight:\s*([^\n<]+)/i,
+    height: /height:\s*([^\n<]+)/i,
+    maxWidth: /maxWidth:\s*([^\n<]+)/i,
+    display: /display:\s*([^\n<]+)/i,
+    justifyContent: /justifyContent:\s*([^\n<]+)/i,
+    alignItems: /alignItems:\s*([^\n<]+)/i,
+    flexDirection: /flexDirection:\s*([^\n<]+)/i,
+    id: /id:\s*([^\n<]+)/i,
+    className: /className:\s*([^\n<]+)/i,
+    as: /as:\s*([^\n<]+)/i
+  };
+  
+  for (const [field, regex] of Object.entries(sectionFields)) {
+    const match = sectionProps.match(regex);
+    if (match) {
+      section[field] = decodeHTMLEntities(match[1].trim());
+    }
+  }
+  
+  if (childrenContent.trim()) {
+    section.children = parseRegularParagraphs(childrenContent);
+  }
+  
+  console.log(`   ✅ Section processada com ${section.children.length} filho(s)`);
+  return section;
+}
+
+function processSectionInline(block) {
+  console.log('📦 Processando section inline...');
+  
+  const section = {
+    type: 'section',
+    children: []
+  };
+  
+  const sectionFields = {
+    backgroundColor: /backgroundColor:\s*([^\n<]+)/i,
+    background: /background:\s*([^\n<]+)/i,
+    backgroundImage: /backgroundImage:\s*([^\n<]+)/i,
+    backgroundVideo: /backgroundVideo:\s*([^\n<]+)/i,
+    overlay: /overlay:\s*([^\n<]+)/i,
+    overlayOpacity: /overlayOpacity:\s*([^\n<]+)/i,
+    padding: /padding:\s*([^\n<]+)/i,
+    margin: /margin:\s*([^\n<]+)/i,
+    textColor: /textColor:\s*([^\n<]+)/i,
+    color: /color:\s*([^\n<]+)/i,
+    textAlign: /textAlign:\s*([^\n<]+)/i,
+    align: /align:\s*([^\n<]+)/i,
+    minHeight: /minHeight:\s*([^\n<]+)/i,
+    height: /height:\s*([^\n<]+)/i,
+    maxWidth: /maxWidth:\s*([^\n<]+)/i,
+    display: /display:\s*([^\n<]+)/i,
+    justifyContent: /justifyContent:\s*([^\n<]+)/i,
+    alignItems: /alignItems:\s*([^\n<]+)/i,
+    flexDirection: /flexDirection:\s*([^\n<]+)/i,
+    id: /id:\s*([^\n<]+)/i,
+    className: /className:\s*([^\n<]+)/i,
+    as: /as:\s*([^\n<]+)/i
+  };
+  
+  for (const [field, regex] of Object.entries(sectionFields)) {
+    const match = block.match(regex);
+    if (match) {
+      section[field] = decodeHTMLEntities(match[1].trim());
+    }
+  }
+  
+  return section;
+}
+
+function parseRegularParagraphs(html) {
+  const paragraphs = [];
+  const typeBlocks = html.split(/(?=type:\s*)/);
+  
+  for (const block of typeBlocks) {
+    if (!block.trim() || !block.includes('type:')) continue;
+    
+    const processed = processRegularComponent(block);
+    if (processed.type) {
+      paragraphs.push(processed);
+    }
+  }
+  
+  return paragraphs;
+}
+
+// ✅ CORRIGIDO: SEM 'continue;' e SEM 'paragraphs.push(...)' aqui dentro.
+// A função só retorna o objeto do parágrafo.
+function processRegularComponent(block) {
+  const paragraph = {};
+  
+  const typeMatch = block.match(/type:\s*([^\n<]+)/);
+  if (typeMatch) {
+    paragraph.type = decodeHTMLEntities(typeMatch[1].trim());
+  }
+
+  // 🎬 Personagens
+  if (['personagens', 'characters', 'character-presentation', 'apresentacao-personagens'].includes(paragraph.type?.toLowerCase())) {
+    console.log('🎭 Processando Apresentação de Personagens...');
+    const characterFields = {
+      personagens: /personagens:\s*(\[[\s\S]*?\])/i,
+      characters: /characters:\s*(\[[\s\S]*?\])/i,
+      lista: /lista:\s*(\[[\s\S]*?\])/i,
+      shapeColor: /shapeColor:\s*([^\n<]+)/i,
+      nameColor: /nameColor:\s*([^\n<]+)/i,
+      textColor: /textColor:\s*([^\n<]+)/i,
+      backgroundColor: /backgroundColor:\s*([^\n<]+)/i,
+      animationSpeed: /animationSpeed:\s*([^\n<]+)/i,
+      sectionHeight: /sectionHeight:\s*([^\n<]+)/i,
+      sectionHeightMobile: /sectionHeightMobile:\s*([^\n<]+)/i
+    };
+    for (const field of ['personagens', 'characters', 'lista']) {
+      const regex = characterFields[field];
+      const match = block.match(regex);
+      if (match) {
+        paragraph[field] = parseJSONField(match[1], `character ${field}`);
+        console.log(`   ✅ ${paragraph[field]?.length || 0} personagens processados em ${field}`);
+        break;
+      }
+    }
+    for (const [field, regex] of Object.entries(characterFields)) {
+      if (['personagens', 'characters', 'lista'].includes(field)) continue;
+      const match = block.match(regex);
+      if (match) paragraph[field] = decodeHTMLEntities(match[1].trim());
+    }
+    const textMatch = block.match(/text:\s*(.*?)(?=\s*(?:personagens|characters|lista|shapeColor|nameColor|textColor|backgroundColor|animationSpeed|sectionHeight|sectionHeightMobile):|type:|$)/si);
+    if (textMatch) paragraph.text = cleanAndFormatHTML(textMatch[1].trim());
+    return paragraph;
+  }
+
+  // 🎯 Curiosidades
+  if (['curiosidades', 'trivia', 'facts', 'apresentacao-curiosidades'].includes(paragraph.type?.toLowerCase())) {
+    console.log('🎯 Processando Curiosidades...');
+    const curiosidadesFields = {
+      personagens: /personagens:\s*(\[[\s\S]*?\])/i,
+      characters: /characters:\s*(\[[\s\S]*?\])/i,
+      lista: /lista:\s*(\[[\s\S]*?\])/i,
+      shapeColor: /shapeColor:\s*([^\n<]+)/i,
+      nameColor: /nameColor:\s*([^\n<]+)/i,
+      textColor: /textColor:\s*([^\n<]+)/i,
+      backgroundColor: /backgroundColor:\s*([^\n<]+)/i,
+      quoteColor: /quoteColor:\s*([^\n<]+)/i
+    };
+    for (const field of ['personagens', 'characters', 'lista']) {
+      const regex = curiosidadesFields[field];
+      const match = block.match(regex);
+      if (match) {
+        paragraph[field] = parseJSONField(match[1], `curiosidades ${field}`);
+        console.log(`   ✅ ${paragraph[field]?.length || 0} curiosidades processadas em ${field}`);
+        break;
+      }
+    }
+    for (const [field, regex] of Object.entries(curiosidadesFields)) {
+      if (['personagens', 'characters', 'lista'].includes(field)) continue;
+      const match = block.match(regex);
+      if (match) paragraph[field] = decodeHTMLEntities(match[1].trim());
+    }
+    const textMatch = block.match(/text:\s*(.*?)(?=\s*(?:personagens|characters|lista|shapeColor|nameColor|textColor|backgroundColor|quoteColor):|type:|$)/si);
+    if (textMatch) paragraph.text = cleanAndFormatHTML(textMatch[1].trim());
+    return paragraph;
+  }
+
+  // 🧩 Itens Recomendados
+  if (['recomendados', 'recommended', 'recommended-items', 'itens-recomendados', 'relacionados', 'conteudos-relacionados'].includes(paragraph.type?.toLowerCase())) {
+    console.log('🎯 Processando Itens Recomendados...');
+    const recommendedFields = {
+      items: /items:\s*(\[[\s\S]*?\])/i,
+      itens: /itens:\s*(\[[\s\S]*?\])/i,
+      title: /title:\s*([^\n<]+)/i,
+      titulo: /titulo:\s*([^\n<]+)/i,
+      layout: /layout:\s*([^\n<]+)/i,
+      columns: /columns:\s*([^\n<]+)/i,
+      colunas: /colunas:\s*([^\n<]+)/i,
+      showTitle: /showTitle:\s*([^\n<]+)/i,
+      mostrarTitulo: /mostrarTitulo:\s*([^\n<]+)/i,
+      backgroundColor: /backgroundColor:\s*([^\n<]+)/i,
+      corFundo: /corFundo:\s*([^\n<]+)/i,
+      titleColor: /titleColor:\s*([^\n<]+)/i,
+      corTitulo: /corTitulo:\s*([^\n<]+)/i,
+      textColor: /textColor:\s*([^\n<]+)/i,
+      corTexto: /corTexto:\s*([^\n<]+)/i
+    };
+    for (const field of ['items', 'itens']) {
+      const regex = recommendedFields[field];
+      const match = block.match(regex);
+      if (match) {
+        paragraph[field] = parseJSONField(match[1], `recommended ${field}`);
+        console.log(`   ✅ ${paragraph[field]?.length || 0} itens processados em ${field}`);
+        break;
+      }
+    }
+    for (const [field, regex] of Object.entries(recommendedFields)) {
+      if (['items', 'itens'].includes(field)) continue;
+      const match = block.match(regex);
+      if (match) paragraph[field] = decodeHTMLEntities(match[1].trim());
+    }
+    const textMatch = block.match(/text:\s*(.*?)(?=\s*(?:items|itens|title|titulo|layout|columns|colunas|showTitle|mostrarTitulo|backgroundColor|corFundo|titleColor|corTitulo|textColor|corTexto):|type:|$)/si);
+    if (textMatch) paragraph.text = cleanAndFormatHTML(textMatch[1].trim());
+    return paragraph;
+  }
+
+  // 🎞️ ScrollyFrames
+  if (paragraph.type?.toLowerCase() === 'scrollyframes') {
+    console.log('🎬 Processando ScrollyFrames...');
+    const scrollyFramesFields = {
+      frameStart: /frameStart:\s*([^\n<]+)/i,
+      frameStop: /frameStop:\s*([^\n<]+)/i,
+      imagePrefix: /imagePrefix:\s*([^\n<]+)/i,
+      imageSuffix: /imageSuffix:\s*([^\n<]+)/i,
+      imagePrefixMobile: /imagePrefixMobile:\s*([^\n<]+)/i,
+      imageSuffixMobile: /imageSuffixMobile:\s*([^\n<]+)/i,
+      height: /height:\s*([^\n<]+)/i,
+      showProgress: /showProgress:\s*([^\n<]+)/i,
+      showTime: /showTime:\s*([^\n<]+)/i,
+      preloadFrames: /preloadFrames:\s*([^\n<]+)/i,
+      memoryLimit: /memoryLimit:\s*([^\n<]+)/i,
+      animationSpeed: /animationSpeed:\s*([^\n<]+)/i,
+      smoothing: /smoothing:\s*([^\n<]+)/i,
+      debug: /debug:\s*([^\n<]+)/i,
+      fullWidth: /fullWidth:\s*([^\n<]+)/i
+    };
+    for (const [field, regex] of Object.entries(scrollyFramesFields)) {
+      const match = block.match(regex);
+      if (match) {
+        let value = decodeHTMLEntities(match[1].trim());
+        if (['frameStart', 'frameStop', 'preloadFrames', 'memoryLimit'].includes(field)) {
+          paragraph[field] = parseInt(value) || (field === 'frameStart' ? 1 : field === 'preloadFrames' ? 8 : field === 'memoryLimit' ? 30 : 100);
+        } else if (field === 'animationSpeed') {
+          paragraph[field] = parseFloat(value) || 0.1;
+        } else if (['showProgress', 'showTime', 'smoothing', 'fullWidth'].includes(field)) {
+          paragraph[field] = value.toLowerCase() !== 'false';
+        } else if (field === 'debug') {
+          paragraph[field] = value.toLowerCase() === 'true';
+        } else {
+          paragraph[field] = value;
+        }
+      }
+    }
+    const stepsMatch = block.match(/steps:\s*(\[[\s\S]*?\])/i);
+    if (stepsMatch) {
+      paragraph.steps = parseJSONField(stepsMatch[1], 'scrollyframes steps');
+      console.log(`   ✅ ${paragraph.steps?.length || 0} steps processados`);
+    }
+    const textMatch = block.match(/text:\s*(.*?)(?=\s*(?:frameStart|frameStop|imagePrefix|imageSuffix|imagePrefixMobile|imageSuffixMobile|height|showProgress|showTime|preloadFrames|memoryLimit|animationSpeed|smoothing|debug|fullWidth|steps):|type:|$)/si);
+    if (textMatch) paragraph.text = cleanAndFormatHTML(textMatch[1].trim());
+    return paragraph;
+  }
+
+  // Flourish / especiais
+  if (['flourish', 'flourish-scrolly', 'grafico', 'mapa'].includes(paragraph.type)) {
+    const srcMatch = block.match(/src:\s*([^\n<]+)/);
+    if (srcMatch) paragraph.src = srcMatch[1].trim();
+    const stepsMatch = block.match(/steps:\s*(\[[\s\S]*?\])/);
+    if (stepsMatch) paragraph.steps = parseJSONField(stepsMatch[1], 'flourish steps');
+    return paragraph;
+  }
+
+  // Section “genérica” como componente (fora dos modos especiais)
+  if (['section', 'secao', 'container', 'wrapper', 'div'].includes(paragraph.type?.toLowerCase())) {
+    console.log('🎨 Processando Section...');
+    const sectionFields = {
+      backgroundColor: /backgroundColor:\s*([^\n<]+)/i,
+      background: /background:\s*([^\n<]+)/i,
+      bg: /bg:\s*([^\n<]+)/i,
+      backgroundImage: /backgroundImage:\s*([^\n<]+)/i,
+      backgroundVideo: /backgroundVideo:\s*([^\n<]+)/i,
+      padding: /padding:\s*([^\n<]+)/i,
+      margin: /margin:\s*([^\n<]+)/i,
+      textColor: /textColor:\s*([^\n<]+)/i,
+      color: /color:\s*([^\n<]+)/i,
+      textAlign: /textAlign:\s*([^\n<]+)/i,
+      align: /align:\s*([^\n<]+)/i,
+      minHeight: /minHeight:\s*([^\n<]+)/i,
+      height: /height:\s*([^\n<]+)/i,
+      display: /display:\s*([^\n<]+)/i,
+      justifyContent: /justifyContent:\s*([^\n<]+)/i,
+      alignItems: /alignItems:\s*([^\n<]+)/i,
+      overlay: /overlay:\s*([^\n<]+)/i,
+      content: /content:\s*(.*?)(?=\s*(?:backgroundColor|background|bg|backgroundImage|backgroundVideo|padding|margin|textColor|color|textAlign|align|minHeight|height|display|justifyContent|alignItems|overlay):|type:|$)/si
+    };
+    for (const [field, regex] of Object.entries(sectionFields)) {
+      const match = block.match(regex);
+      if (match) paragraph[field] = decodeHTMLEntities(match[1].trim());
+    }
+    if (!paragraph.content) {
+      const textMatch = block.match(/text:\s*(.*?)(?=\s*(?:backgroundColor|background|bg|backgroundImage|backgroundVideo|padding|margin|textColor|color|textAlign|align|minHeight|height|display|justifyContent|alignItems|overlay):|type:|$)/si);
+      if (textMatch) paragraph.text = cleanAndFormatHTML(textMatch[1].trim());
+    }
+    return paragraph;
+  }
+
+  // Texto e campos gerais
+  const textMatch = block.match(/text:\s*(.*?)(?=\s*(?:backgroundImage|backgroundImageMobile|backgroundVideo|backgroundVideoMobile|backgroundPosition|backgroundPositionMobile|author|role|src|videoSrc|videoSrcMobile|caption|credit|alt|fullWidth|variant|size|orientation|autoplay|controls|poster|images|items|steps|beforeImage|afterImage|beforeLabel|afterLabel|image|height|heightMobile|speed|content|overlay|layout|columns|interval|showDots|showArrows|stickyHeight|videoId|videosIDs|id|skipDFP|skipdfp|autoPlay|startMuted|maxQuality|quality|chromeless|isLive|live|allowRestrictedContent|preventBlackBars|globoId|token|adAccountId|adCmsId|siteName|width|textPosition|textPositionMobile|textAlign|textAlignMobile|title|subtitle|date|theme|videoAspectRatio|showProgress|showTime|showControls):|type:|$)/si);
+  if (textMatch) {
+    let rawText = textMatch[1].trim();
+    rawText = rawText.replace(/\.\s*\.\s*$/, '.');
+    rawText = rawText.replace(/\s+\.\s*$/, '.');
+    paragraph.text = cleanAndFormatHTML(rawText);
+  }
+
+  const jsonFields = ['images', 'items', 'steps'];
+  for (const field of jsonFields) {
+    const regex = new RegExp(`${field}:\\s*(\\[[\\s\\S]*?\\])`, 'i');
+    const match = block.match(regex);
+    if (match) paragraph[field] = parseJSONField(match[1], field);
+  }
+
+  const fieldMappings = {
+    title: 'title', subtitle: 'subtitle', date: 'date', theme: 'theme',
+    backgroundImage: 'backgroundImage', backgroundImageMobile: 'backgroundImageMobile', backgroundVideo: 'backgroundVideo',
+    backgroundVideoMobile: 'backgroundVideoMobile', backgroundPosition: 'backgroundPosition', backgroundPositionMobile: 'backgroundPositionMobile',
+    textPosition: 'textPosition', textPositionMobile: 'textPositionMobile', textAlign: 'textAlign', textAlignMobile: 'textAlignMobile',
+    author: 'author', role: 'role', src: 'src', videoSrc: 'videoSrc', videoSrcMobile: 'videoSrcMobile', srcMobile: 'srcMobile', caption: 'caption', credit: 'credit', alt: 'alt', fullWidth: 'fullWidth', variant: 'variant',
+    size: 'size', orientation: 'orientation', autoplay: 'autoplay', controls: 'controls', poster: 'poster', overlay: 'overlay',
+    layout: 'layout', columns: 'columns', interval: 'interval', showDots: 'showDots', showArrows: 'showArrows',
+    stickyHeight: 'stickyHeight', beforeImage: 'beforeImage', afterImage: 'afterImage', beforeLabel: 'beforeLabel',
+    afterLabel: 'afterLabel', image: 'image', speed: 'speed', content: 'content', videoId: 'videoId', videosIDs: 'videosIDs', id: 'id',
+    skipDFP: 'skipDFP', skipdfp: 'skipdfp', autoPlay: 'autoPlay', startMuted: 'startMuted', maxQuality: 'maxQuality', quality: 'quality',
+    chromeless: 'chromeless', isLive: 'isLive', live: 'live', allowRestrictedContent: 'allowRestrictedContent',
+    preventBlackBars: 'preventBlackBars', globoId: 'globoId', token: 'token', adAccountId: 'adAccountId', adCmsId: 'adCmsId',
+    siteName: 'siteName', width: 'width', height: 'height', heightMobile: 'heightMobile', showCaption: 'showCaption',
+    alignment: 'alignment', loop: 'loop', videoAspectRatio: 'videoAspectRatio', aspectRatio: 'aspectRatio', showProgress: 'showProgress', showTime: 'showTime', showControls: 'showControls'
+  };
+    
+  for (const [field, prop] of Object.entries(fieldMappings)) {
+    const regex = new RegExp(`\\b${field}:\\s*([^\\n<]*)`, 'i');
+    const match = block.match(regex);
+    if (match) {
+      const cleanedValue = (match[1] || '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/<[^>]*>/g, '')
+        .trim();
+      paragraph[prop] = decodeHTMLEntities(cleanedValue);
+    }
+  }
+
+  return paragraph;
 }
 
 function parseCreditsHTML(html) {
@@ -750,20 +870,12 @@ function parseCreditsHTML(html) {
 
 function cleanAndFormatHTML(html) {
   if (!html) return '';
-  
-  // 🔧 CORREÇÃO: Primeiro decodifica as entidades HTML
   let cleanedHtml = decodeHTMLEntities(html);
-  
-  // Remove backticks problemáticos
   cleanedHtml = cleanedHtml.replace(/`/g, "'");
-  
-  // Preserva formatação básica convertendo estilos inline para tags simples
   cleanedHtml = cleanedHtml.replace(/<([^>]+)style="[^"]*font-weight:\s*(?:bold|[7-9]\d\d|700|800|900)[^"]*"[^>]*>(.*?)<\/\1>/gi, '<strong>$2</strong>');
   cleanedHtml = cleanedHtml.replace(/<([^>]+)style="[^"]*font-style:\s*italic[^"]*"[^>]*>(.*?)<\/\1>/gi, '<em>$2</em>');
   cleanedHtml = cleanedHtml.replace(/<([^>]+)style="[^"]*text-decoration[^"]*underline[^"]*"[^>]*>(.*?)<\/\1>/gi, '<u>$2</u>');
   cleanedHtml = cleanedHtml.replace(/<a\s+href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '<a href="$1">$2</a>');
-  
-  // Processa listas com bullets
   const listRegex = /((?:[•*-]\s.*)(?:<br\s*\/?>\s*[•*-]\s.*)*)/g;
   cleanedHtml = cleanedHtml.replace(listRegex, (listBlock) => {
     const items = listBlock.split(/<br\s*\/?>/gi)
@@ -773,23 +885,18 @@ function cleanAndFormatHTML(html) {
       .join('');
     return items ? `<ul>${items}</ul>` : '';
   });
-
-  // Remove tags desnecessárias mas preserva conteúdo
   cleanedHtml = cleanedHtml.replace(/<\/?(span|p|div)[^>]*>/gi, '');
-  
   cleanedHtml = cleanedHtml
-  .replace(/\.{2,}/g, '.')  // Remove pontos duplos/triplos
-  .replace(/,(?!\s)/g, ', ')  // Garante espaço após vírgula
-  .replace(/\s+\./g, '.')  // Remove espaços antes de pontos
-  .replace(/\s+,/g, ',')   // Remove espaços antes de vírgulas
-  .replace(/\s{2,}/g, ' '); // Remove espaços múltiplos
-
+    .replace(/\.{2,}/g, '.')
+    .replace(/,(?!\s)/g, ', ')
+    .replace(/\s+\./g, '.')
+    .replace(/\s+,/g, ',')
+    .replace(/\s{2,}/g, ' ');
   cleanedHtml = cleanedHtml
-  .replace(/\.\s*\.\s*$/g, '.')  // Remove pontos duplos especificamente no final
-  .replace(/\.\s*\.\s*/g, '. ')  // Substitui pontos duplos por ponto simples + espaço no meio
-  .replace(/\s+\.\s*$/g, '.')    // Remove espaços antes do ponto final
-  .replace(/\.+$/g, '.');        // Garante apenas um ponto no final
-
+    .replace(/\.\s*\.\s*$/g, '.')
+    .replace(/\.\s*\.\s*/g, '. ')
+    .replace(/\s+\.\s*$/g, '.')
+    .replace(/\.+$/g, '.');
   return cleanedHtml.trim();
 }
 

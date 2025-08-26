@@ -12,6 +12,79 @@ export function parseStoryComponents(paragraphs) {
 		const type = paragraph.type?.toLowerCase().trim();
 
 		switch (type) {
+			// 🎯 ARQUIVO: src/lib/utils/storyRenderer.js
+// 📍 LOCALIZAÇÃO EXATA: Função parseStoryComponents, dentro do switch
+
+export function parseStoryComponents(paragraphs) {
+	if (!paragraphs || !Array.isArray(paragraphs)) {
+		return [];
+	}
+
+	return paragraphs.map((paragraph, index) => {
+		const component = { id: `component-${index}` };
+		const type = paragraph.type?.toLowerCase().trim();
+
+		switch (type) {
+			// ⭐ ADICIONE O CASE DA SECTION AQUI, LOGO NO INÍCIO ⭐
+			
+			// 🆕 NOVO: Section
+			case 'section':
+			case 'secao':
+			case 'container':
+			case 'wrapper':
+			case 'div':
+				component.type = 'section';
+				
+				// Background
+				component.backgroundColor = paragraph.backgroundColor || paragraph.background || paragraph.bg || '';
+				component.backgroundImage = paragraph.backgroundImage || paragraph.backgroundImg || paragraph.bgImage || '';
+				component.backgroundVideo = paragraph.backgroundVideo || paragraph.backgroundVid || paragraph.bgVideo || '';
+				component.backgroundSize = paragraph.backgroundSize || paragraph.bgSize || 'cover';
+				component.backgroundPosition = paragraph.backgroundPosition || paragraph.bgPosition || 'center';
+				component.backgroundRepeat = paragraph.backgroundRepeat || paragraph.bgRepeat || 'no-repeat';
+				component.backgroundAttachment = paragraph.backgroundAttachment || paragraph.bgAttachment || 'scroll';
+				component.overlay = paragraph.overlay || paragraph.overlayColor || '';
+				component.overlayOpacity = paragraph.overlayOpacity || paragraph.opacity || '0.5';
+
+				// Spacing
+				component.padding = paragraph.padding || paragraph.p || '';
+				component.paddingTop = paragraph.paddingTop || paragraph.pt || '';
+				component.paddingBottom = paragraph.paddingBottom || paragraph.pb || '';
+				component.paddingLeft = paragraph.paddingLeft || paragraph.pl || '';
+				component.paddingRight = paragraph.paddingRight || paragraph.pr || '';
+				component.margin = paragraph.margin || paragraph.m || '';
+				component.marginTop = paragraph.marginTop || paragraph.mt || '';
+				component.marginBottom = paragraph.marginBottom || paragraph.mb || '';
+				component.marginLeft = paragraph.marginLeft || paragraph.ml || '';
+				component.marginRight = paragraph.marginRight || paragraph.mr || '';
+
+				// Text
+				component.textColor = paragraph.textColor || paragraph.color || '';
+				component.textAlign = paragraph.textAlign || paragraph.align || '';
+				component.fontSize = paragraph.fontSize || paragraph.size || '';
+				component.fontWeight = paragraph.fontWeight || paragraph.weight || '';
+
+				// Layout
+				component.minHeight = paragraph.minHeight || paragraph.minH || 'auto';
+				component.height = paragraph.height || paragraph.h || 'auto';
+				component.maxHeight = paragraph.maxHeight || paragraph.maxH || '';
+				component.maxWidth = paragraph.maxWidth || paragraph.maxW || '';
+				component.width = paragraph.width || paragraph.w || '';
+				component.display = paragraph.display || '';
+				component.justifyContent = paragraph.justifyContent || paragraph.justify || '';
+				component.alignItems = paragraph.alignItems || paragraph.alignItems || '';
+				component.flexDirection = paragraph.flexDirection || paragraph.direction || '';
+
+				// Meta
+				component.id = paragraph.id || `section-${index}`;
+				component.className = paragraph.className || paragraph.class || '';
+				component.as = paragraph.as || paragraph.element || 'section';
+
+				// Conteúdo
+				component.content = paragraph.content || paragraph.html || '';
+				component.text = paragraph.text || '';
+				break;
+
 			case 'header':
 			case 'titulo-principal':
 			case 'tituloprincipal':
@@ -738,26 +811,27 @@ export function processRecommendedItems(items) {
 /**
  * Processa dados de um documento completo
  */
-export function processStoryData(rawData) {
-	if (!rawData) return null;
-	
-	const processed = {
-		title: rawData.title || '',
-		subtitle: rawData.subtitle || rawData.intro || '',
-		author: rawData.author || '',
-		publishDate: rawData.publishDate || rawData.date || '',
-		backgroundImage: rawData.backgroundImage || '',
-		backgroundImageMobile: rawData.backgroundImageMobile || '',
-		credits: rawData.credits || '',
-		paragraphs: []
-	};
-	
-	// Processar parágrafos
-	if (rawData.paragraphs && Array.isArray(rawData.paragraphs)) {
-		processed.paragraphs = parseStoryComponents(rawData.paragraphs);
-	}
-	
-	return processed;
+export function processStoryData(archieData) {
+  const processed = {
+    title: archieData.title || '',
+    subtitle: archieData.subtitle || '',
+    author: archieData.author || '',
+    date: archieData.date || archieData.publishDate || '',
+    intro: archieData.intro ? {
+      text: archieData.intro.text || archieData.intro
+    } : null,
+    paragraphs: [],
+    finalCredits: archieData.finalCredits || null
+  };
+
+  // Processar parágrafos
+  if (archieData.paragraphs && Array.isArray(archieData.paragraphs)) {
+    processed.paragraphs = archieData.paragraphs.map(paragraph => {
+      return processComponent(paragraph);
+    });
+  }
+
+  return processed;
 }
 
 /**

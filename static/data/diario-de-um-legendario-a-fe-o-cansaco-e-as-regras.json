@@ -22,6 +22,14 @@
   "title": "Diário de um Legendário: a fé, o cansaço e as regras militares no retiro que virou febre entre famosos",
   "paragraphs": [
     {
+      "type": "section",
+      "children": [],
+      "backgroundColor": "#1e293b",
+      "padding": "4rem 2rem",
+      "textColor": "white",
+      "color": "#1e293b"
+    },
+    {
       "type": "scrollyframes",
       "frameStart": 1,
       "frameStop": 51,
