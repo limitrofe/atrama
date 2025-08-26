@@ -1,7 +1,8 @@
 <!-- StoryRenderer.svelte - COMPLETO com ScrollyFrames, CharacterPresentation, Curiosidades e RecommendedItems -->
 <script>
 	// Importação dos componentes da história
-		import Section from '../Section.svelte'; // ← NOVO: Componente Section
+import Section from './Section.svelte';
+
 
 	import Header from './story/Header.svelte';
 	import StoryText from './story/StoryText.svelte';
